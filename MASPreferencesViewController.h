@@ -8,12 +8,13 @@
 
 - (void)viewWillAppear;
 - (void)viewDidDisappear;
-- (NSView*)initialKeyView;
+
+@property(nonatomic,strong,readonly)	NSView		*initialKeyView;
 
 @required
 
-@property (nonatomic, readonly) NSString *identifier;
-@property (nonatomic, readonly) NSImage *toolbarItemImage;
-@property (nonatomic, readonly) NSString *toolbarItemLabel;
+@property(nonatomic,copy,readonly)		NSString	*identifier;
+@property(nonatomic,strong,readonly)	NSImage		*toolbarItemImage;
+@property(nonatomic,copy,readonly)		NSString	*toolbarItemLabel;
 
 @end

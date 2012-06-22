@@ -1,4 +1,3 @@
-
 #import "MASPreferencesWindowController.h"
 
 NSString *const kMASPreferencesWindowControllerDidChangeViewNotification = @"MASPreferencesWindowControllerDidChangeViewNotification";
@@ -15,14 +14,19 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 
 - (NSViewController <MASPreferencesViewController> *)viewControllerForIdentifier:(NSString *)identifier;
 
-@property (readonly) NSArray *toolbarItemIdentifiers;
-@property (nonatomic, retain) NSViewController <MASPreferencesViewController> *selectedViewController;
+@property(nonatomic,strong,readonly)	NSArray			*toolbarItemIdentifiers;
+@property(nonatomic,strong,readwrite)	NSViewController<MASPreferencesViewController>	*selectedViewController;
 
 @end
 
-#pragma mark -
 
 @implementation MASPreferencesWindowController
+{
+    NSArray *_viewControllers;
+    NSMutableDictionary *_minimumViewRects;
+    NSString *_title;
+    NSViewController<MASPreferencesViewController> *_selectedViewController;
+}
 
 @synthesize viewControllers = _viewControllers;
 @synthesize selectedViewController = _selectedViewController;
@@ -39,7 +43,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 {
     if ((self = [super initWithWindowNibName:@"MASPreferencesWindow"]))
     {
-        _viewControllers = [viewControllers retain];
+        _viewControllers = viewControllers;
         _minimumViewRects = [[NSMutableDictionary alloc] init];
         _title = [title copy];
     }
@@ -50,13 +54,6 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [[self window] setDelegate:nil];
-    
-    [_viewControllers release];
-    [_selectedViewController release];
-    [_minimumViewRects release];
-    [_title release];
-    
-    [super dealloc];
 }
 
 #pragma mark -
@@ -64,9 +61,9 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 - (void)windowDidLoad
 {
     if ([self.title length] > 0)
-        [[self window] setTitle:self.title];
+        self.window.title = self.title;
 
-    if ([self.viewControllers count])
+    if (self.viewControllers.count)
         self.selectedViewController = [self viewControllerForIdentifier:[[NSUserDefaults standardUserDefaults] stringForKey:kMASPreferencesSelectedViewKey]] ?: [self.viewControllers objectAtIndex:0];
 
     NSString *origin = [[NSUserDefaults standardUserDefaults] stringForKey:kMASPreferencesFrameTopLeftKey];
@@ -92,7 +89,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 
 - (void)windowDidResize:(NSNotification*)aNotification
 {
-    NSViewController <MASPreferencesViewController> *viewController = self.selectedViewController;
+    NSViewController<MASPreferencesViewController> *viewController = self.selectedViewController;
     if (viewController)
         [[NSUserDefaults standardUserDefaults] setObject:NSStringFromRect([viewController.view bounds]) forKey:PreferencesKeyForViewBounds(viewController.identifier)];
 }
@@ -153,7 +150,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
         toolbarItem.target = self;
         toolbarItem.action = @selector(toolbarItemDidClick:);
     }
-    return [toolbarItem autorelease];
+    return toolbarItem;
 }
 
 #pragma mark -
@@ -209,11 +206,10 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
             return;
         }
 
-        [self.window setContentView:[[[NSView alloc] init] autorelease]];
+        [self.window setContentView:[[NSView alloc] init]];
         if ([_selectedViewController respondsToSelector:@selector(viewDidDisappear)])
             [_selectedViewController viewDidDisappear];
 
-        [_selectedViewController release];
         _selectedViewController = nil;
     }
 
@@ -222,10 +218,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 
     // Retrieve the new window tile from the controller view
     if ([self.title length] == 0)
-    {
-        NSString *label = controller.toolbarItemLabel;
-        self.window.title = label;
-    }
+        self.window.title = controller.toolbarItemLabel;
 
     [[self.window toolbar] setSelectedItemIdentifier:controller.identifier];
 
@@ -260,7 +253,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 
     [self.window setFrame:newFrame display:YES animate:[self.window isVisible]];
     
-    _selectedViewController = [controller retain];
+    _selectedViewController = controller;
     if ([controller respondsToSelector:@selector(viewWillAppear)])
         [controller viewWillAppear];
     
@@ -268,7 +261,7 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
     [self.window recalculateKeyViewLoop];
     if ([self.window firstResponder] == self.window) {
         if ([controller respondsToSelector:@selector(initialKeyView)])
-            [self.window makeFirstResponder:[controller initialKeyView]];
+            [self.window makeFirstResponder:controller.initialKeyView];
         else
             [self.window selectKeyViewFollowingView:controllerView];
     }
@@ -300,16 +293,14 @@ static NSString *const PreferencesKeyForViewBounds (NSString *identifier)
 - (IBAction)goNextTab:(id)sender
 {
     NSUInteger selectedIndex = self.indexOfSelectedController;
-    NSUInteger numberOfControllers = [_viewControllers count];
-    selectedIndex = (selectedIndex + 1) % numberOfControllers;
+    selectedIndex = (selectedIndex + 1) % _viewControllers.count;
     [self selectControllerAtIndex:selectedIndex];
 }
 
 - (IBAction)goPreviousTab:(id)sender
 {
     NSUInteger selectedIndex = self.indexOfSelectedController;
-    NSUInteger numberOfControllers = [_viewControllers count];
-    selectedIndex = (selectedIndex + numberOfControllers - 1) % numberOfControllers;
+    selectedIndex = (selectedIndex + _viewControllers.count - 1) % _viewControllers.count;
     [self selectControllerAtIndex:selectedIndex];
 }
 
